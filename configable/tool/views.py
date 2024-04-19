@@ -15,7 +15,7 @@ from .utils import find_all_paths
 from django.db.models import Sum
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .utils import find_all_paths_with_costs  # We'll define this function next
+from .utils import find_all_paths_with_costs, find_all_paths_with_reputation
 
 class ParameterListView(generics.ListAPIView):
     queryset = ParameterList.objects.all()
@@ -52,7 +52,7 @@ def find_parts_chain_by_price(request):
     if request.method == 'POST':
         data = request.data
         initial_params = data.get('initialParameters', [])
-        goal_params = data.get('goalParameters', [])
+        goal_params = data.get('goalParameters', [])    
         
         # Convert parameter IDs to ParameterList objects
         initial_params_objs = ParameterList.objects.filter(parameterId__in=initial_params)
@@ -72,3 +72,28 @@ def find_parts_chain_by_price(request):
 
         response_data = {'paths': formatted_paths}
         return Response(response_data, status=status.HTTP_200_OK)
+    
+@api_view(['POST'])
+def find_parts_chain_by_reputation(request):
+    data = request.data
+    initial_params = data.get('initialParameters', [])
+    goal_params = data.get('goalParameters', [])
+
+    # Convert parameter IDs to ParameterList objects
+    initial_params_objs = ParameterList.objects.filter(parameterId__in=initial_params)
+    goal_params_objs = ParameterList.objects.filter(parameterId__in=goal_params)
+
+    paths_with_reputation = find_all_paths_with_reputation(initial_params_objs, goal_params_objs)
+    
+    # Format the response data to include part IDs, part Names, and reputation
+    formatted_paths = []
+    for path, parts in paths_with_reputation:
+        formatted_path = {
+            'parameters': [param.parameterId for param in path],
+            'parts': [{'partId': part_id, 'partName': part_name, 'partReputation': part_reputation} for part_id, part_name, part_reputation in parts],
+            'totalReputation': sum(part_reputation for _, _, part_reputation in parts)
+        }
+        formatted_paths.append(formatted_path)
+
+    response_data = {'paths': formatted_paths}
+    return Response(response_data, status=status.HTTP_200_OK)
