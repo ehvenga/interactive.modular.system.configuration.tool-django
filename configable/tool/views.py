@@ -11,11 +11,10 @@ from .serializers import PartDetailsSerializer
 import networkx as nx
 from rest_framework import status
 from rest_framework.decorators import api_view
-from .utils import find_all_paths
 from django.db.models import Sum
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .utils import find_all_paths_with_costs, find_all_paths_with_reputation
+from .utils import find_all_paths_with_costs, find_all_paths_with_reputation, find_all_paths, find_all_paths_v2
 
 class ParameterListView(generics.ListAPIView):
     queryset = ParameterList.objects.all()
@@ -32,7 +31,7 @@ def find_parts_chain(request):
         initial_params_objs = ParameterList.objects.filter(parameterId__in=initial_params)
         goal_params_objs = ParameterList.objects.filter(parameterId__in=goal_params)
         
-        paths = find_all_paths(initial_params_objs, goal_params_objs)
+        paths = find_all_paths_v2(initial_params_objs, goal_params_objs)
     
         # Format the response data to include part IDs
         formatted_paths = []
