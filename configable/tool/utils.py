@@ -47,12 +47,14 @@ def find_all_paths_v2(start_params, goal_params):
             part = entry.part
             part_id = part.partId
             part_name = part.partName
+            part_cost = part.partCost
+            part_rep = part.partReputation
             for output in part.partoutputparameters_set.all():
                 next_param = output.partOutputParameter
                 if next_param and not any(next_param == p.parameterId for p in current_path):
                     # Avoiding cycles by checking if we already visited this parameter
                     next_param_obj = ParameterList.objects.get(parameterId=next_param.parameterId)
-                    queue.append((current_path + [next_param_obj], current_parts + [(part_id, part_name)]))
+                    queue.append((current_path + [next_param_obj], current_parts + [(part_id, part_name, part_cost, part_rep)]))
 
     # Splitting each found path into sub-paths of only two parameters
     split_paths = []
@@ -64,9 +66,9 @@ def find_all_paths_v2(start_params, goal_params):
             sub_path = path[i:i + 2]
             sub_parts = []
             if i < len(parts):
-                part_id, part_name = parts[i]
+                part_id, part_name, part_cost, part_rep = parts[i]
                 if part_id not in seen_parts:
-                    sub_parts.append((part_id, part_name))
+                    sub_parts.append((part_id, part_name, part_cost, part_rep))
                     seen_parts.add(part_id)
             if len(sub_path) == 2:  # Ensuring each sub-path is valid
                 sub_path_tuple = (tuple(sub_path), tuple(sub_parts))

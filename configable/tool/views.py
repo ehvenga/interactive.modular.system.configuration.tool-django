@@ -38,7 +38,7 @@ def find_parts_chain(request):
         for path, parts in paths:
             formatted_path = {
                 'parameters': [param.parameterId for param in path],
-                'parts': [{'partId': part_id, 'partName': part_name} for part_id, part_name in parts]
+                'parts': [{'partId': part_id, 'partName': part_name, 'partCost': part_cost, 'partReputation': part_rep} for part_id, part_name, part_cost, part_rep in parts]
             }
             formatted_paths.append(formatted_path)
 
