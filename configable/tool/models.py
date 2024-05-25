@@ -18,3 +18,11 @@ class PartInputParameters(models.Model):
 class PartOutputParameters(models.Model):
     part = models.ForeignKey(PartDetails, on_delete=models.CASCADE)
     partOutputParameter = models.ForeignKey(ParameterList, on_delete=models.CASCADE)
+
+class FunctionList(models.Model):
+    functionId = models.AutoField(primary_key=True)
+    functionName = models.CharField(max_length=255)
+
+class PartGoalFunctions(models.Model):
+    part = models.ForeignKey(PartDetails, on_delete=models.CASCADE)
+    partGoalFunction = models.ForeignKey(FunctionList, on_delete=models.CASCADE)

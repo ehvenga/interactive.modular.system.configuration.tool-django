@@ -1,13 +1,12 @@
 from django.shortcuts import render
 from rest_framework import generics
 from .models import ParameterList
-from .serializers import ParameterListSerializer
+from .serializers import ParameterListSerializer, FunctionListSerializer
 from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
-from .models import PartInputParameters, PartOutputParameters, PartDetails, ParameterList
-from .serializers import PartDetailsSerializer
+from .models import PartInputParameters, PartOutputParameters, PartDetails, ParameterList, FunctionList
 import networkx as nx
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -19,6 +18,9 @@ from .utils import find_all_paths_with_costs, find_all_paths_with_reputation, fi
 class ParameterListView(generics.ListAPIView):
     queryset = ParameterList.objects.all()
     serializer_class = ParameterListSerializer
+class FunctionListView(generics.ListAPIView):
+    queryset = FunctionList.objects.all()
+    serializer_class = FunctionListSerializer
 
 @api_view(['POST'])
 def find_parts_chain(request):
