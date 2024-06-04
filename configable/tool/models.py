@@ -26,3 +26,7 @@ class FunctionList(models.Model):
 class PartGoalFunctions(models.Model):
     part = models.ForeignKey(PartDetails, on_delete=models.CASCADE)
     partGoalFunction = models.ForeignKey(FunctionList, on_delete=models.CASCADE)
+
+class ParameterVersionHierarchy(models.Model):
+    parentParameter = models.ForeignKey(ParameterList, related_name='children', on_delete=models.CASCADE)
+    childParameter = models.ForeignKey(ParameterList, related_name='parents', on_delete=models.CASCADE)
