@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from collections import deque, defaultdict
 from .serializers import ParameterListSerializer, FunctionListSerializer, PartDetailsSerializer
-from .models import PartInputParameters, PartOutputParameters, PartDetails, ParameterList, FunctionList, PartGoalFunctions
+from .models import PartInputParameters, PartOutputParameters, PartDetails, ParameterList, FunctionList, PartGoalFunctions, ParameterVersionHierarchy
 from .utils import find_all_paths_with_costs, find_all_paths_with_reputation, find_all_paths, find_all_paths_v2
 from django.db.models import Q
 from django.http import JsonResponse
@@ -85,7 +85,6 @@ def find_parts_chain_by_function(request):
     input_parameters = request.data.get('input_parameters')
     goal_functions = request.data.get('goal_functions')
 
-    # Check if the input_parameters and goal_functions match the required payload
     if input_parameters == [1] and goal_functions == [3]:
         parameter_names = {
             1: "Power",
@@ -145,8 +144,79 @@ def find_parts_chain_by_function(request):
 
         return Response(response_data)
 
-    # Return an empty response or error message if the payload does not match the specified conditions
-    return Response({"message": "No matching paths found for the given input parameters and goal functions."}, status=400)
+    def get_part_paths(input_param, goal_function):
+        paths = []
+        parts = PartDetails.objects.filter(
+            Q(partinputparameters__partInputParameter=input_param) &
+            Q(partgoalfunctions__partGoalFunction=goal_function)
+        ).distinct()
+
+        def dfs(current_part, path, goal_function):
+            if PartGoalFunctions.objects.filter(part=current_part, partGoalFunction=goal_function).exists():
+                paths.append(path + [current_part])
+
+            output_params = PartOutputParameters.objects.filter(part=current_part).values_list('partOutputParameter', flat=True)
+            next_parts = PartDetails.objects.filter(partinputparameters__partInputParameter__in=output_params).distinct()
+
+            for next_part in next_parts:
+                dfs(next_part, path + [current_part], goal_function)
+
+        for part in parts:
+            dfs(part, [], goal_function)
+        return paths
+
+    def get_compatible_parts(input_param, goal_function):
+        paths = []
+        parts = PartDetails.objects.filter(
+            Q(partinputparameters__partInputParameter=input_param) &
+            Q(partgoalfunctions__partGoalFunction=goal_function)
+        ).distinct()
+
+        def dfs(current_part, path, goal_function, visited_params):
+            if PartGoalFunctions.objects.filter(part=current_part, partGoalFunction=goal_function).exists():
+                paths.append(path + [current_part])
+
+            output_params = PartOutputParameters.objects.filter(part=current_part).values_list('partOutputParameter', flat=True)
+            compatible_params = set(output_params)
+
+            for param in output_params:
+                compatible_params.update(ParameterVersionHierarchy.objects.filter(parentParameter=param).values_list('childParameter', flat=True))
+
+            next_parts = PartDetails.objects.filter(partinputparameters__partInputParameter__in=compatible_params).distinct()
+
+            for next_part in next_parts:
+                new_visited_params = visited_params.copy()
+                new_visited_params.update(compatible_params)
+                if next_part not in path:
+                    dfs(next_part, path + [current_part], goal_function, new_visited_params)
+
+        for part in parts:
+            dfs(part, [], goal_function, set())
+        return paths
+
+    def format_part_paths(part_paths):
+        formatted_paths = []
+        for path in part_paths:
+            formatted_path = {
+                'parameters': [param.parameterName for param in ParameterList.objects.filter(parameterId__in=input_parameters + list(PartInputParameters.objects.filter(part__in=path).values_list('partInputParameter', flat=True)))],
+                'parts': [{'partId': part.partId, 'partName': part.partName, 'partCost': part.partCost, 'partReputation': part.partReputation} for part in path]
+            }
+            formatted_paths.append(formatted_path)
+        return formatted_paths
+
+    input_param = input_parameters[0]
+    goal_function = goal_functions[0]
+
+    paths = get_part_paths(input_param, goal_function)
+    paths_with_backward_compatibility = get_compatible_parts(input_param, goal_function)
+
+    response_data = {
+        'paths': format_part_paths(paths),
+        'paths_with_bc': format_part_paths(paths_with_backward_compatibility)
+    }
+
+    return Response(response_data)
+
 
 
 
